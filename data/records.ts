@@ -1,5 +1,10 @@
-import { db } from '@/lib/db';
+import { createClient } from '@supabase/supabase-js';
 import isOnline from 'is-online';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 export const fetchRecords = async ({
   take = 5,
   skip = 0,
@@ -17,52 +22,65 @@ export const fetchRecords = async ({
   }
   ('use server');
   try {
-    const results = await db.transaction.findMany({
-      where: {
-        id: { contains: query, mode: 'insensitive' },
-      },
-      skip,
-      take,
-      select: {
-        id: true,
-        totalAmount: true,
-        createdAt: true,
-        isComplete: true,
-        products: {
-          select: {
-            id: true,
-            productId: true,
-            quantity: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'asc',
-      },
-    });
+    // Build the query for Supabase
+    let supabaseQuery = supabase
+      .from('Transaction')
+      .select(`
+        id,
+        totalAmount,
+        createdAt,
+        isComplete,
+        OnSaleProduct!OnSaleProduct_transactionId_fkey (
+          id,
+          productId,
+          quantity
+        )
+      `)
+      .order('createdAt', { ascending: true })
+      .range(skip, skip + take - 1);
 
-    // Hitung total quantity untuk setiap transaksi
-    const resultsWithTotalQuantity = results.map((transaction) => {
-      const totalQuantity = transaction.products.reduce(
-        (sum, product) => sum + product.quantity,
+    // Add search filter if query is provided
+    if (query) {
+      supabaseQuery = supabaseQuery.ilike('id', `%${query}%`);
+    }
+
+    const { data: results, error } = await supabaseQuery;
+
+    if (error) {
+      throw error;
+    }
+
+    // Calculate total quantity for each transaction
+    const resultsWithTotalQuantity = (results || []).map((transaction: any) => {
+      const totalQuantity = (transaction.OnSaleProduct || []).reduce(
+        (sum: number, product: any) => sum + (product.quantity || 0),
         0
       );
       return {
         ...transaction,
+        products: transaction.OnSaleProduct, // Rename for compatibility
         totalQuantity,
       };
     });
 
-    const totalTransactions = await db.transaction.count();
+    // Get total count
+    const { count: totalTransactions, error: countError } = await supabase
+      .from('Transaction')
+      .select('*', { count: 'exact', head: true });
+
+    if (countError) {
+      throw countError;
+    }
 
     return {
       data: resultsWithTotalQuantity,
       metadata: {
-        hasNextPage: skip + take < totalTransactions,
-        totalPages: Math.ceil(totalTransactions / take),
+        hasNextPage: skip + take < (totalTransactions || 0),
+        totalPages: Math.ceil((totalTransactions || 0) / take),
       },
     };
-  } finally {
-    await db.$disconnect();
+  } catch (error) {
+    console.error('Error fetching records:', error);
+    throw error;
   }
 };

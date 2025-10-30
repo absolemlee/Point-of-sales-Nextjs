@@ -55,6 +55,285 @@ Table ShopData {
   name String
 }
 
+Table Service {
+  id String [pk]
+  serviceName String [not null]
+  serviceCode String [unique, not null]
+  category ServiceCategory [not null]
+  complexity ServiceComplexity [not null]
+  shortDescription String [not null]
+  detailedDescription String
+  requiredSkills String[] [not null]
+  requiredCertifications String[] [not null]
+  estimatedDurationHours Float [not null]
+  durationRangeMinHours Float [not null]
+  durationRangeMaxHours Float [not null]
+  requiresSpecificStartTime Boolean [not null, default: false]
+  canBeSplitAcrossDays Boolean [not null, default: false]
+  requiresContinuousWork Boolean [not null, default: true]
+  preparationInstructions String
+  executionInstructions String [not null]
+  completionRequirements String
+  qualityStandards String
+  expectedDeliverables String[] [not null]
+  successCriteria String[] [not null]
+  requiredEquipment String[] [not null]
+  requiredMaterials String[] [not null]
+  locationRequirements String
+  suggestedBaseRate Float
+  complexityMultiplier Float [not null, default: 1]
+  isActive Boolean [not null, default: true]
+  requiresApproval Boolean [not null, default: false]
+  createdBy String
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  versionNumber Int [not null, default: 1]
+  serviceOffers ServiceOffer [not null]
+}
+
+Table ServiceOffer {
+  id String [pk]
+  serviceId String [not null]
+  service Service [not null]
+  locationId String [not null]
+  offerTitle String
+  customInstructions String
+  preferredStartDate DateTime [not null]
+  preferredStartTime String
+  latestStartDate DateTime
+  mustCompleteBy DateTime
+  canStartAnytimeInRange Boolean [not null, default: false]
+  acceptableStartTimes String[] [not null]
+  offeredAmount Float [not null]
+  paymentStructure PaymentStructure [not null, default: 'FIXED']
+  hourlyRate Float
+  maxHours Float
+  bonusConditions Json
+  expenseReimbursement Boolean [not null, default: false]
+  customDurationEstimate Float
+  locationSpecificRequirements String[] [not null]
+  additionalEquipmentProvided String[] [not null]
+  minimumExperienceLevel Int [not null, default: 0]
+  requiredLocationExperience Boolean [not null, default: false]
+  preferredAssociates String[] [not null]
+  excludedAssociates String[] [not null]
+  offerStatus OfferStatus [not null, default: 'OPEN']
+  urgency ServiceUrgency [not null, default: 'ROUTINE']
+  maxApplicants Int [not null, default: 1]
+  currentApplicants Int [not null, default: 0]
+  postedBy String [not null]
+  postedAt DateTime [default: `now()`, not null]
+  expiresAt DateTime
+  internalNotes String
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  serviceAgreements ServiceAgreement [not null]
+}
+
+Table ServiceAgreement {
+  id String [pk]
+  serviceOfferId String [not null]
+  serviceOffer ServiceOffer [not null]
+  associateId String [not null]
+  locationId String [not null]
+  agreedAmount Float [not null]
+  agreedStartTime DateTime [not null]
+  estimatedCompletionTime DateTime [not null]
+  specificInstructions String
+  agreedDeliverables String[] [not null]
+  qualityRequirements String
+  cancellationPolicy String
+  latePenaltyTerms String
+  qualityGuaranteeTerms String
+  agreementStatus AgreementStatus [not null, default: 'PROPOSED']
+  associateAcceptedAt DateTime
+  locationApprovedAt DateTime
+  approvedBy String
+  negotiationNotes String[] [not null]
+  revisedTerms Json[] [not null]
+  actualStartTime DateTime
+  actualCompletionTime DateTime
+  finalAmountPaid Float
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  serviceExecution ServiceExecution
+  serviceReviews ServiceReview [not null]
+
+  indexes {
+    (serviceOfferId, associateId) [unique]
+  }
+}
+
+Table ServiceExecution {
+  id String [pk]
+  serviceAgreementId String [unique, not null]
+  serviceAgreement ServiceAgreement [not null]
+  startedAt DateTime
+  pausedAt DateTime
+  resumedAt DateTime
+  completedAt DateTime
+  completionPercentage Int [not null, default: 0]
+  currentPhase String
+  milestonesCompleted String[] [not null]
+  qualityCheckpoints Json[] [not null]
+  performanceNotes String[] [not null]
+  issuesEncountered String[] [not null]
+  equipmentUsed String[] [not null]
+  materialsConsumed Json
+  additionalResourcesNeeded String[] [not null]
+  associateNotes String[] [not null]
+  progressReports Json[] [not null]
+  locationFeedback String[] [not null]
+  satisfactionRating Int
+  hoursLogged Float
+  expensesIncurred Float
+  bonusEarned Float
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table ServiceReview {
+  id String [pk]
+  serviceAgreementId String [not null]
+  serviceAgreement ServiceAgreement [not null]
+  reviewerId String [not null]
+  reviewerType String [not null]
+  overallRating Int [not null]
+  qualityRating Int
+  timelinessRating Int
+  communicationRating Int
+  professionalismRating Int
+  writtenReview String
+  positiveAspects String[] [not null]
+  areasForImprovement String[] [not null]
+  wouldWorkAgain Boolean
+  wouldRecommend Boolean
+  isVerified Boolean [not null, default: false]
+  reviewHelpfulVotes Int [not null, default: 0]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+
+  indexes {
+    (serviceAgreementId, reviewerId) [unique]
+  }
+}
+
+Table Device {
+  id String [pk]
+  fingerprint String [unique, not null]
+  deviceType DeviceType [not null]
+  name String [not null]
+  description String
+  capabilities Json [not null]
+  locationId String
+  assignedUserId String
+  status DeviceStatus [not null, default: 'PENDING_APPROVAL']
+  approvedBy String
+  approvedAt DateTime
+  userAgent String
+  lastIpAddress String
+  lastSeen DateTime
+  sessions DeviceSession [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table DeviceSession {
+  id String [pk]
+  deviceId String [not null]
+  device Device [not null]
+  userId String
+  sessionToken String [unique, not null]
+  status SessionStatus [not null, default: 'ACTIVE']
+  lastActivity DateTime [default: `now()`, not null]
+  ipAddress String
+  userAgent String
+  expiresAt DateTime [not null]
+  terminatedAt DateTime
+  terminatedReason String
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table Location {
+  id String [pk]
+  name String [not null]
+  address String
+  phone String
+  email String
+  isActive Boolean [not null, default: true]
+  timezone String [not null, default: 'UTC']
+  posConfig Json
+  orders Order [not null]
+  shifts Shift [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table Shift {
+  id String [pk]
+  locationId String [not null]
+  location Location [not null]
+  workerId String [not null]
+  startTime DateTime [not null]
+  endTime DateTime
+  breakDuration Int
+  isActive Boolean [not null, default: true]
+  clockedIn Boolean [not null, default: false]
+  clockedOut Boolean [not null, default: false]
+  ordersProcessed Int [not null, default: 0]
+  totalSales Decimal [not null, default: 0]
+  notes String
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table Order {
+  id String [pk]
+  orderNumber String [unique, not null]
+  locationId String [not null]
+  location Location [not null]
+  status OrderStatus [not null, default: 'PENDING']
+  orderType String [not null]
+  customerName String
+  customerPhone String
+  tableNumber String
+  items Json [not null]
+  subtotal Decimal [not null]
+  taxAmount Decimal [not null]
+  tipAmount Decimal [not null, default: 0]
+  discountAmount Decimal [not null, default: 0]
+  totalAmount Decimal [not null]
+  orderTime DateTime [default: `now()`, not null]
+  prepStartTime DateTime
+  readyTime DateTime
+  servedTime DateTime
+  takenBy String
+  preparedBy String
+  servedBy String
+  payments Payment [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table Payment {
+  id String [pk]
+  orderId String [not null]
+  order Order [not null]
+  amount Decimal [not null]
+  method PaymentMethod [not null]
+  status PaymentStatus [not null, default: 'PENDING']
+  transactionId String
+  processorResponse Json
+  processedBy String
+  processedAt DateTime
+  refundedAmount Decimal [not null, default: 0]
+  refundedAt DateTime
+  refundReason String
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
 Enum UserRole {
   OWNER
   WORKER
@@ -68,8 +347,125 @@ Enum CatProduct {
   FASHION
 }
 
+Enum ServiceCategory {
+  FOOD_PREPARATION
+  CUSTOMER_SERVICE
+  CLEANING_MAINTENANCE
+  INVENTORY_MANAGEMENT
+  SETUP_BREAKDOWN
+  DELIVERY_LOGISTICS
+  ADMINISTRATIVE
+  TRAINING_SUPPORT
+  MARKETING_PROMOTION
+  TECHNICAL_SUPPORT
+}
+
+Enum ServiceComplexity {
+  BASIC
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+Enum ServiceUrgency {
+  ROUTINE
+  PRIORITY
+  URGENT
+  EMERGENCY
+}
+
+Enum OfferStatus {
+  OPEN
+  PENDING
+  ACCEPTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+Enum AgreementStatus {
+  PROPOSED
+  NEGOTIATING
+  ACCEPTED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+Enum PaymentStructure {
+  FIXED
+  HOURLY_CAPPED
+  MILESTONE
+  PERFORMANCE
+}
+
+Enum DeviceType {
+  CUSTOMER_KIOSK
+  KITCHEN_DISPLAY
+  PAYMENT_TERMINAL
+  MANAGER_STATION
+  MOBILE_POS
+  TABLET_POS
+}
+
+Enum DeviceStatus {
+  ACTIVE
+  INACTIVE
+  PENDING_APPROVAL
+  REJECTED
+  MAINTENANCE
+}
+
+Enum SessionStatus {
+  ACTIVE
+  EXPIRED
+  TERMINATED
+}
+
+Enum OrderStatus {
+  PENDING
+  IN_PREPARATION
+  READY
+  SERVED
+  CANCELLED
+}
+
+Enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+Enum PaymentMethod {
+  CASH
+  CREDIT_CARD
+  DEBIT_CARD
+  MOBILE_PAY
+  GIFT_CARD
+}
+
 Ref: Product.productId > ProductStock.id [delete: Cascade]
 
 Ref: OnSaleProduct.productId > Product.productId [delete: Cascade]
 
 Ref: OnSaleProduct.transactionId > Transaction.id [delete: Cascade]
+
+Ref: ServiceOffer.serviceId > Service.id [delete: Cascade]
+
+Ref: ServiceAgreement.serviceOfferId > ServiceOffer.id [delete: Cascade]
+
+Ref: ServiceExecution.serviceAgreementId - ServiceAgreement.id [delete: Cascade]
+
+Ref: ServiceReview.serviceAgreementId > ServiceAgreement.id [delete: Cascade]
+
+Ref: DeviceSession.deviceId > Device.id [delete: Cascade]
+
+Ref: Shift.locationId > Location.id [delete: Cascade]
+
+Ref: Order.locationId > Location.id
+
+Ref: Payment.orderId > Order.id [delete: Cascade]

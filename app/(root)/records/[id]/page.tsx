@@ -59,10 +59,10 @@ export default function DetailPage({ params }: { params: { id: string } }) {
         const response = await axios.get('/api/shopdata');
         const shopdata = response.data.data;
 
-        if (response.status === 200) {
-          setTaxRate(shopdata.tax);
+        if (response.status === 200 && shopdata) {
+          setTaxRate(shopdata.tax || 0);
         } else {
-          console.log('Failed to fetch data:', shopdata.error);
+          console.log('Failed to fetch data:', shopdata?.error || 'Unknown error');
         }
       } catch (error) {
         console.error('Failed to fetch data:', error);

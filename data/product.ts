@@ -1,5 +1,10 @@
-import { db } from '@/lib/db';
+import { createClient } from '@supabase/supabase-js';
 import isOnline from 'is-online';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export const fetchProduct = async ({
   take = 5,
@@ -19,45 +24,58 @@ export const fetchProduct = async ({
 
   ('use server');
   try {
-    const results = await db.product.findMany({
-      where: {
-        productstock: {
-          name: { contains: query, mode: 'insensitive' },
-        },
-      },
-      skip,
-      take,
-      select: {
-        id: true,
-        productId: true,
-        sellprice: true,
-        productstock: {
-          select: {
-            id: true,
-            name: true,
-            cat: true,
-            stock: true,
-            price: true,
-          },
-        },
-      },
-      orderBy: {
-        productstock: {
-          name: 'asc',
-        },
-      },
-    });
+    // Build the query for Supabase with join
+    let supabaseQuery = supabase
+      .from('Product')
+      .select(`
+        id,
+        productId,
+        sellprice,
+        ProductStock!Product_productId_fkey (
+          id,
+          name,
+          cat,
+          stock,
+          price
+        )
+      `)
+      .range(skip, skip + take - 1);
 
-    const total = await db.product.count();
+    // Add search filter if query is provided
+    if (query) {
+      supabaseQuery = supabaseQuery.or(`ProductStock.name.ilike.%${query}%`);
+    }
+
+    const { data: results, error } = await supabaseQuery;
+
+    if (error) {
+      throw error;
+    }
+
+    // Transform data to match the expected format
+    const transformedResults = (results || []).map((product: any) => ({
+      ...product,
+      productstock: product.ProductStock, // Rename for compatibility
+    }));
+
+    // Get total count
+    const { count: total, error: countError } = await supabase
+      .from('Product')
+      .select('*', { count: 'exact', head: true });
+
+    if (countError) {
+      throw countError;
+    }
 
     return {
-      data: results,
+      data: transformedResults,
       metadata: {
-        hasNextPage: skip + take < total,
-        totalPages: Math.ceil(total / take),
+        hasNextPage: skip + take < (total || 0),
+        totalPages: Math.ceil((total || 0) / take),
       },
     };
-  } finally {
-    await db.$disconnect();
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    throw error;
   }
 };

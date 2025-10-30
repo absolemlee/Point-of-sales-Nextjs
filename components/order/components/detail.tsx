@@ -72,10 +72,10 @@ export default function Detail({
         const response = await axios.get('/api/shopdata');
         const shopdata = response.data.data;
 
-        if (response.status === 200) {
-          setTaxRate(shopdata.tax);
+        if (response.status === 200 && shopdata) {
+          setTaxRate(shopdata.tax || 0);
         } else {
-          toast.error('Failed to fetch data: ' + shopdata.error);
+          toast.error('Failed to fetch data: ' + (shopdata?.error || 'Unknown error'));
         }
       } catch (error: any) {
         toast.error(

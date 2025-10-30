@@ -92,3 +92,565 @@ model ShopData {
   name String?
 }
 
+// ============================================
+// SERVICE EXCHANGE SYSTEM
+// ============================================
+
+enum ServiceCategory {
+  FOOD_PREPARATION
+  CUSTOMER_SERVICE
+  CLEANING_MAINTENANCE
+  INVENTORY_MANAGEMENT
+  SETUP_BREAKDOWN
+  DELIVERY_LOGISTICS
+  ADMINISTRATIVE
+  TRAINING_SUPPORT
+  MARKETING_PROMOTION
+  TECHNICAL_SUPPORT
+}
+
+enum ServiceComplexity {
+  BASIC
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum ServiceUrgency {
+  ROUTINE
+  PRIORITY
+  URGENT
+  EMERGENCY
+}
+
+enum OfferStatus {
+  OPEN
+  PENDING
+  ACCEPTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+enum AgreementStatus {
+  PROPOSED
+  NEGOTIATING
+  ACCEPTED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum PaymentStructure {
+  FIXED
+  HOURLY_CAPPED
+  MILESTONE
+  PERFORMANCE
+}
+
+model Service {
+  id            String    @id @default(cuid())
+  
+  // Service Identity
+  serviceName   String
+  serviceCode   String    @unique
+  category      ServiceCategory
+  complexity    ServiceComplexity
+  
+  // Service Description
+  shortDescription      String
+  detailedDescription   String?
+  requiredSkills        String[]
+  requiredCertifications String[]
+  
+  // Duration and Timing
+  estimatedDurationHours    Float
+  durationRangeMinHours     Float
+  durationRangeMaxHours     Float
+  
+  // Flexibility settings
+  requiresSpecificStartTime Boolean @default(false)
+  canBeSplitAcrossDays     Boolean @default(false)
+  requiresContinuousWork   Boolean @default(true)
+  
+  // Service Instructions
+  preparationInstructions  String?
+  executionInstructions    String
+  completionRequirements   String?
+  qualityStandards        String?
+  
+  // Deliverables and Outputs
+  expectedDeliverables    String[]
+  successCriteria         String[]
+  
+  // Resource Requirements
+  requiredEquipment       String[]
+  requiredMaterials       String[]
+  locationRequirements    String?
+  
+  // Pricing Guidelines
+  suggestedBaseRate       Float?
+  complexityMultiplier    Float    @default(1.0)
+  
+  // Service Status
+  isActive                Boolean  @default(true)
+  requiresApproval        Boolean  @default(false)
+  
+  // Metadata
+  createdBy               String? // Reference to User or UserAccount
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  versionNumber           Int      @default(1)
+  
+  // Relations
+  serviceOffers           ServiceOffer[]
+}
+
+model ServiceOffer {
+  id            String    @id @default(cuid())
+  
+  // Service Reference
+  serviceId     String
+  service       Service   @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  locationId    String    // Reference to Location from location system
+  
+  // Offer Details
+  offerTitle    String?
+  customInstructions String?
+  
+  // Timing Requirements
+  preferredStartDate     DateTime
+  preferredStartTime     String?  // Time stored as string "HH:MM"
+  latestStartDate        DateTime?
+  mustCompleteBy         DateTime?
+  
+  // Flexible timing options
+  canStartAnytimeInRange Boolean    @default(false)
+  acceptableStartTimes   String[]   // Array of acceptable start times
+  
+  // Compensation
+  offeredAmount          Float
+  paymentStructure       PaymentStructure @default(FIXED)
+  
+  // Additional compensation details
+  hourlyRate             Float?
+  maxHours               Float?
+  bonusConditions        Json?
+  expenseReimbursement   Boolean    @default(false)
+  
+  // Service Customization
+  customDurationEstimate Float?
+  locationSpecificRequirements String[]
+  additionalEquipmentProvided  String[]
+  
+  // Associate Requirements
+  minimumExperienceLevel      Int     @default(0)
+  requiredLocationExperience  Boolean @default(false)
+  preferredAssociates        String[] // Array of UserAccount IDs
+  excludedAssociates         String[] // Associates who cannot take this offer
+  
+  // Offer Management
+  offerStatus            OfferStatus    @default(OPEN)
+  urgency                ServiceUrgency @default(ROUTINE)
+  maxApplicants          Int            @default(1)
+  currentApplicants      Int            @default(0)
+  
+  // Posting Details
+  postedBy               String    // Reference to UserAccount
+  postedAt               DateTime  @default(now())
+  expiresAt              DateTime?
+  
+  // Internal notes
+  internalNotes          String?
+  
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  
+  // Relations
+  serviceAgreements      ServiceAgreement[]
+}
+
+model ServiceAgreement {
+  id            String    @id @default(cuid())
+  
+  // Core References
+  serviceOfferId         String
+  serviceOffer           ServiceOffer @relation(fields: [serviceOfferId], references: [id], onDelete: Cascade)
+  associateId            String    // Reference to UserAccount
+  locationId             String    // Reference to Location
+  
+  // Agreement Terms
+  agreedAmount           Float
+  agreedStartTime        DateTime
+  estimatedCompletionTime DateTime
+  
+  // Service Details
+  specificInstructions   String?
+  agreedDeliverables     String[]
+  qualityRequirements    String?
+  
+  // Terms and Conditions
+  cancellationPolicy     String?
+  latePenaltyTerms      String?
+  qualityGuaranteeTerms String?
+  
+  // Status Tracking
+  agreementStatus        AgreementStatus @default(PROPOSED)
+  
+  // Approval Workflow
+  associateAcceptedAt    DateTime?
+  locationApprovedAt     DateTime?
+  approvedBy             String?   // Reference to UserAccount
+  
+  // Negotiation History
+  negotiationNotes       String[]
+  revisedTerms           Json[]
+  
+  // Performance Tracking
+  actualStartTime        DateTime?
+  actualCompletionTime   DateTime?
+  finalAmountPaid        Float?
+  
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  
+  // Relations
+  serviceExecution       ServiceExecution?
+  serviceReviews         ServiceReview[]
+  
+  @@unique([serviceOfferId, associateId])
+}
+
+model ServiceExecution {
+  id            String    @id @default(cuid())
+  
+  // Core References
+  serviceAgreementId     String           @unique
+  serviceAgreement       ServiceAgreement @relation(fields: [serviceAgreementId], references: [id], onDelete: Cascade)
+  
+  // Time Tracking
+  startedAt              DateTime?
+  pausedAt               DateTime?
+  resumedAt              DateTime?
+  completedAt            DateTime?
+  
+  // Progress Tracking
+  completionPercentage   Int      @default(0)
+  currentPhase           String?
+  milestonesCompleted    String[]
+  
+  // Quality and Performance
+  qualityCheckpoints     Json[]
+  performanceNotes       String[]
+  issuesEncountered      String[]
+  
+  // Resource Usage
+  equipmentUsed          String[]
+  materialsConsumed      Json?    // Track quantities used
+  additionalResourcesNeeded String[]
+  
+  // Associate Updates
+  associateNotes         String[]
+  progressReports        Json[]   // Structured progress updates
+  
+  // Location Feedback
+  locationFeedback       String[]
+  satisfactionRating     Int?     // 1-5 rating
+  
+  // Financial Tracking
+  hoursLogged            Float?
+  expensesIncurred       Float?
+  bonusEarned            Float?
+  
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
+
+model ServiceReview {
+  id            String    @id @default(cuid())
+  
+  // Core References
+  serviceAgreementId     String
+  serviceAgreement       ServiceAgreement @relation(fields: [serviceAgreementId], references: [id], onDelete: Cascade)
+  reviewerId             String    // Reference to UserAccount
+  
+  // Review Type
+  reviewerType           String    // 'LOCATION' or 'ASSOCIATE'
+  
+  // Ratings (1-5 scale)
+  overallRating          Int
+  qualityRating          Int?
+  timelinessRating       Int?
+  communicationRating    Int?
+  professionalismRating  Int?
+  
+  // Written Feedback
+  writtenReview          String?
+  positiveAspects        String[]
+  areasForImprovement    String[]
+  
+  // Recommendation
+  wouldWorkAgain         Boolean?
+  wouldRecommend         Boolean?
+  
+  // Review Metadata
+  isVerified             Boolean  @default(false)
+  reviewHelpfulVotes     Int      @default(0)
+  
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  
+  @@unique([serviceAgreementId, reviewerId])
+}
+
+// ============================================
+// POS SYSTEM & DEVICE MANAGEMENT
+// ============================================
+
+enum DeviceType {
+  CUSTOMER_KIOSK
+  KITCHEN_DISPLAY
+  PAYMENT_TERMINAL
+  MANAGER_STATION
+  MOBILE_POS
+  TABLET_POS
+}
+
+enum DeviceStatus {
+  ACTIVE
+  INACTIVE
+  PENDING_APPROVAL
+  REJECTED
+  MAINTENANCE
+}
+
+enum SessionStatus {
+  ACTIVE
+  EXPIRED
+  TERMINATED
+}
+
+enum OrderStatus {
+  PENDING
+  IN_PREPARATION
+  READY
+  SERVED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CASH
+  CREDIT_CARD
+  DEBIT_CARD
+  MOBILE_PAY
+  GIFT_CARD
+}
+
+model Device {
+  id                String        @id @default(cuid())
+  fingerprint       String        @unique
+  deviceType        DeviceType
+  name              String
+  description       String?
+  
+  // Device Capabilities
+  capabilities      Json          // Store device capabilities JSON
+  
+  // Location & Assignment
+  locationId        String?
+  assignedUserId    String?
+  
+  // Status & Approval
+  status            DeviceStatus  @default(PENDING_APPROVAL)
+  approvedBy        String?
+  approvedAt        DateTime?
+  
+  // Device Info
+  userAgent         String?
+  lastIpAddress     String?
+  lastSeen          DateTime?
+  
+  // Relations
+  sessions          DeviceSession[]
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  @@index([locationId])
+  @@index([status])
+}
+
+model DeviceSession {
+  id                String        @id @default(cuid())
+  
+  // Device & User
+  deviceId          String
+  device            Device        @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  userId            String?
+  
+  // Session Details
+  sessionToken      String        @unique
+  status            SessionStatus @default(ACTIVE)
+  
+  // Activity Tracking
+  lastActivity      DateTime      @default(now())
+  ipAddress         String?
+  userAgent         String?
+  
+  // Session Management
+  expiresAt         DateTime
+  terminatedAt      DateTime?
+  terminatedReason  String?
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  @@index([deviceId])
+  @@index([sessionToken])
+  @@index([status])
+}
+
+model Location {
+  id                String        @id @default(cuid())
+  name              String
+  address           String?
+  phone             String?
+  email             String?
+  
+  // Operating Configuration
+  isActive          Boolean       @default(true)
+  timezone          String        @default("UTC")
+  
+  // POS Configuration
+  posConfig         Json?         // Store POS-specific configuration
+  
+  // Relations
+  orders            Order[]
+  shifts            Shift[]
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+}
+
+model Shift {
+  id                String        @id @default(cuid())
+  
+  // Location & Worker
+  locationId        String
+  location          Location      @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  workerId          String
+  
+  // Shift Details
+  startTime         DateTime
+  endTime           DateTime?
+  breakDuration     Int?          // Minutes
+  
+  // Status
+  isActive          Boolean       @default(true)
+  clockedIn         Boolean       @default(false)
+  clockedOut        Boolean       @default(false)
+  
+  // Performance Metrics
+  ordersProcessed   Int           @default(0)
+  totalSales        Decimal       @default(0)
+  notes             String?
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  @@index([locationId])
+  @@index([workerId])
+  @@index([startTime])
+}
+
+model Order {
+  id                String        @id @default(cuid())
+  orderNumber       String        @unique
+  
+  // Location & Processing
+  locationId        String
+  location          Location      @relation(fields: [locationId], references: [id])
+  
+  // Order Details
+  status            OrderStatus   @default(PENDING)
+  orderType         String        // 'DINE_IN', 'TAKEOUT', 'DELIVERY'
+  
+  // Customer Info (optional for anonymous orders)
+  customerName      String?
+  customerPhone     String?
+  tableNumber       String?
+  
+  // Order Items (JSON for flexibility)
+  items             Json          // Array of order items with products, quantities, customizations
+  
+  // Financial
+  subtotal          Decimal
+  taxAmount         Decimal
+  tipAmount         Decimal       @default(0)
+  discountAmount    Decimal       @default(0)
+  totalAmount       Decimal
+  
+  // Processing Times
+  orderTime         DateTime      @default(now())
+  prepStartTime     DateTime?
+  readyTime         DateTime?
+  servedTime        DateTime?
+  
+  // Staff Assignment
+  takenBy           String?       // User ID who took the order
+  preparedBy        String?       // User ID who prepared the order
+  servedBy          String?       // User ID who served the order
+  
+  // Relations
+  payments          Payment[]
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  @@index([locationId])
+  @@index([status])
+  @@index([orderTime])
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  
+  // Order Reference
+  orderId           String
+  order             Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  // Payment Details
+  amount            Decimal
+  method            PaymentMethod
+  status            PaymentStatus @default(PENDING)
+  
+  // Payment Processing
+  transactionId     String?       // External payment processor transaction ID
+  processorResponse Json?         // Store full processor response
+  
+  // Metadata
+  processedBy       String?       // User ID who processed payment
+  processedAt       DateTime?
+  
+  // Refund Information
+  refundedAmount    Decimal       @default(0)
+  refundedAt        DateTime?
+  refundReason      String?
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  @@index([orderId])
+  @@index([status])
+}
+

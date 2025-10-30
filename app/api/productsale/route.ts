@@ -1,9 +1,12 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { createClient } from '@supabase/supabase-js';
 
-// Instantiate Prisma client
-const prisma = new PrismaClient();
+// Instantiate Supabase client
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 // Define type for QuantityByDay
 type QuantityByDay = {
@@ -34,18 +37,15 @@ export async function GET(req: NextRequest) {
     endDate.setUTCHours(23, 59, 59, 999); // Set end date to the end of the day
 
     // Query the database to get total quantity sold within the date range
-    const result = await prisma.onSaleProduct.findMany({
-      where: {
-        saledate: {
-          gte: startDate,
-          lte: endDate,
-        },
-      },
-      select: {
-        saledate: true,
-        quantity: true,
-      },
-    });
+    const { data: result, error } = await supabase
+      .from('OnSaleProduct')
+      .select('saledate, quantity')
+      .gte('saledate', startDate.toISOString())
+      .lte('saledate', endDate.toISOString());
+
+    if (error) {
+      throw error;
+    }
 
     // Create an array of all dates in the range with totalQuantity initialized to 0
     const dateArray: QuantityByDay[] = [];
@@ -58,8 +58,8 @@ export async function GET(req: NextRequest) {
     }
 
     // Map the database results to the date array
-    const resultMap = result.reduce<Record<string, number>>((acc, entry) => {
-      const day = entry.saledate.toISOString().split('T')[0];
+    const resultMap = (result || []).reduce<Record<string, number>>((acc, entry) => {
+      const day = new Date(entry.saledate).toISOString().split('T')[0];
       if (!acc[day]) {
         acc[day] = 0;
       }
@@ -82,8 +82,5 @@ export async function GET(req: NextRequest) {
       { error: 'Internal Server Error' },
       { status: 500 }
     );
-  } finally {
-    // Disconnect the Prisma client after the request is processed
-    await prisma.$disconnect();
   }
 }

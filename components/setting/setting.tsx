@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import axios from 'axios';
 import ShopnameCard from './components/shopname';
 import TaxrateCard from './components/taxrate';
+import { ServiceExchangeSettingsCard } from './components/service-exchange-settings';
 import eventBus from '@/lib/even';
 export function Setting() {
   const [storeName, setStoreName] = useState<string | null>(null);
@@ -25,12 +26,12 @@ export function Setting() {
         const response = await axios.get('/api/shopdata');
         const shopdata = response.data.data;
 
-        if (response.status === 200) {
-          setStoreId(shopdata.id);
-          setStoreName(shopdata.name);
-          setTaxRate(shopdata.tax);
+        if (response.status === 200 && shopdata) {
+          setStoreId(shopdata.id || 'default-shop');
+          setStoreName(shopdata.name || 'Point of Sale System');
+          setTaxRate(shopdata.tax || 0);
         } else {
-          toast.error('Failed to fetch data: ' + shopdata.error);
+          toast.error('Failed to fetch data: ' + (shopdata?.error || 'Unknown error'));
         }
       } catch (error: any) {
         toast.error(
@@ -61,6 +62,7 @@ export function Setting() {
           <div className="grid gap-6">
             <ShopnameCard storeName={storeName} storeId={storeId} />
             <TaxrateCard tax={taxRate} storeId={storeId} />
+            <ServiceExchangeSettingsCard />
           </div>
         </div>
       </div>

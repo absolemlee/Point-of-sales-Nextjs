@@ -1,0 +1,422 @@
+/**
+ * KavaPR Root Layout with User Context Integration
+ * 
+ * This layout wrapper integrates the UserContextProvider and handles
+ * role-based navigation and routing.
+ */
+
+'use client';
+
+import React from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import { useUser, PermissionGate } from '@/lib/auth/user-context';
+import { KavaPRRole } from '@/schema/kavap-r-types';
+import { UserBasedRouter } from '@/lib/routing/user-based-router';
+
+// UI Components
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { 
+  Building, 
+  Users, 
+  Settings, 
+  LogOut, 
+  MapPin, 
+  Clock,
+  Shield,
+  AlertTriangle
+} from 'lucide-react';
+
+// ========================================
+// LOADING COMPONENT
+// ========================================
+
+function LoadingSpinner() {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="text-center space-y-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+        <p className="text-muted-foreground">Loading KavaPR...</p>
+      </div>
+    </div>
+  );
+}
+
+// ========================================
+// UNAUTHORIZED ACCESS COMPONENT
+// ========================================
+
+function UnauthorizedAccess() {
+  const router = useRouter();
+  const { user } = useUser();
+  const role = user?.role;
+
+  const handleGoBack = () => {
+    if (role) {
+      const defaultRoute = UserBasedRouter.getDefaultRoute(role);
+      router.push(defaultRoute);
+    } else {
+      router.push('/login');
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <Card className="max-w-md w-full">
+        <CardHeader className="text-center">
+          <div className="mx-auto h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+            <Shield className="h-6 w-6 text-destructive" />
+          </div>
+          <CardTitle className="text-xl font-semibold">Access Restricted</CardTitle>
+        </CardHeader>
+        <CardContent className="text-center space-y-4">
+          <p className="text-muted-foreground">
+            You don't have permission to access this area of KavaPR.
+          </p>
+          <Button onClick={handleGoBack} className="w-full">
+            Return to Dashboard
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ========================================
+// USER STATUS INDICATOR
+// ========================================
+
+function UserStatusIndicator() {
+  const { user, signOut } = useUser();
+
+  if (!user) return null;
+
+  return (
+    <Card className="fixed top-4 right-4 z-50 w-80">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-medium">{user.name}</CardTitle>
+          <Badge variant="outline" className="text-xs">
+            {role?.replace('_', ' ')}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0 space-y-2">
+        {currentLocation && (
+          <div className="flex items-center text-xs text-muted-foreground">
+            <MapPin className="h-3 w-3 mr-1" />
+            {currentLocation.name}
+          </div>
+        )}
+        
+        {activeTemporalAccess && activeTemporalAccess.endTime && (
+          <div className="flex items-center text-xs text-amber-600">
+            <Clock className="h-3 w-3 mr-1" />
+            Temporary access expires: {new Date(activeTemporalAccess.endTime).toLocaleString()}
+          </div>
+        )}
+
+        <Separator />
+        
+        <div className="flex space-x-1">
+          <Button variant="ghost" size="sm" className="h-6 text-xs">
+            <Settings className="h-3 w-3 mr-1" />
+            Settings
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-6 text-xs text-destructive hover:text-destructive"
+            onClick={logout}
+          >
+            <LogOut className="h-3 w-3 mr-1" />
+            Logout
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ========================================
+// ROLE-BASED NAVIGATION
+// ========================================
+
+function RoleBasedNavigation() {
+  const { role, permissions, checkPermission } = useUser();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  if (!role) return null;
+
+  const navigationItems = UserBasedRouter.getNavigationItems(role, permissions);
+
+  return (
+    <nav className="fixed left-4 top-4 z-40 w-64">
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">KavaPR Navigation</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="space-y-1">
+            {navigationItems.map((item) => (
+              <div key={item.path}>
+                <Button
+                  variant={pathname === item.path ? "default" : "ghost"}
+                  size="sm"
+                  className="w-full justify-start text-xs"
+                  onClick={() => router.push(item.path)}
+                >
+                  {item.label}
+                  {item.badge && (
+                    <Badge variant="secondary" className="ml-auto h-4 text-xs">
+                      {item.badge}
+                    </Badge>
+                  )}
+                </Button>
+                
+                {item.children && pathname.startsWith(item.path) && (
+                  <div className="ml-4 mt-1 space-y-1">
+                    {item.children.map((child) => (
+                      <Button
+                        key={child.path}
+                        variant={pathname === child.path ? "default" : "ghost"}
+                        size="sm"
+                        className="w-full justify-start text-xs"
+                        onClick={() => router.push(child.path)}
+                      >
+                        {child.label}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </nav>
+  );
+}
+
+// ========================================
+// LOCATION SWITCHER
+// ========================================
+
+function LocationSwitcher() {
+  const { 
+    accessibleLocations, 
+    currentLocation, 
+    switchLocation,
+    hasLocationAccess 
+  } = useUser();
+
+  if (accessibleLocations.length <= 1) return null;
+
+  return (
+    <Card className="fixed bottom-4 right-4 z-40 w-64">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium">Switch Location</CardTitle>
+      </CardHeader>
+      <CardContent className="pt-0 space-y-2">
+        {accessibleLocations.map((location) => (
+          <Button
+            key={location.id}
+            variant={currentLocation?.id === location.id ? "default" : "outline"}
+            size="sm"
+            className="w-full justify-start text-xs"
+            onClick={() => switchLocation(location.id)}
+            disabled={!hasLocationAccess(location.id)}
+          >
+            <Building className="h-3 w-3 mr-2" />
+            {location.name}
+            <Badge 
+              variant="secondary" 
+              className="ml-auto h-4 text-xs"
+            >
+              {location.type}
+            </Badge>
+          </Button>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ========================================
+// MAIN LAYOUT WRAPPER
+// ========================================
+
+interface KavaPRLayoutWrapperProps {
+  children: React.ReactNode;
+}
+
+export function KavaPRLayoutWrapper({ children }: KavaPRLayoutWrapperProps) {
+  const { 
+    isLoading, 
+    isAuthenticated, 
+    role,
+    checkPermission,
+    hasLocationAccess 
+  } = useUser();
+  
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Show loading spinner while checking authentication
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
+  // Redirect to login if not authenticated
+  if (!isAuthenticated) {
+    router.push('/login');
+    return <LoadingSpinner />;
+  }
+
+  // Extract location ID if present
+  const locationId = pathname.match(/\/location\/([^\/]+)/)?.[1];
+
+  // Check route access
+  if (role) {
+    const hasRouteAccess = UserBasedRouter.hasRouteAccess(
+      pathname,
+      role,
+      [], // Permissions will be checked in middleware
+      locationId
+    );
+
+    if (!hasRouteAccess) {
+      return <UnauthorizedAccess />;
+    }
+
+    // Check location access if location-specific route
+    if (locationId && !hasLocationAccess(locationId)) {
+      return <UnauthorizedAccess />;
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* User Status Indicator */}
+      <UserStatusIndicator />
+      
+      {/* Role-Based Navigation */}
+      <RoleBasedNavigation />
+      
+      {/* Location Switcher */}
+      <LocationSwitcher />
+      
+      {/* Main Content with Proper Spacing */}
+      <main className="pl-72 pr-84 pt-4 pb-4">
+        {children}
+      </main>
+    </div>
+  );
+}
+
+// ========================================
+// ROLE-SPECIFIC DASHBOARD REDIRECTOR
+// ========================================
+
+export function DashboardRedirector() {
+  const { role, currentLocation } = useUser();
+  const router = useRouter();
+
+  React.useEffect(() => {
+    if (role) {
+      const defaultRoute = UserBasedRouter.getDefaultRoute(role, currentLocation?.id);
+      router.replace(defaultRoute);
+    }
+  }, [role, currentLocation, router]);
+
+  return <LoadingSpinner />;
+}
+
+// ========================================
+// QUICK ACCESS COMPONENTS FOR SPECIFIC ROLES
+// ========================================
+
+export function SuperadminQuickActions() {
+  const router = useRouter();
+  
+  return (
+    <PermissionGate roles={[KavaPRRole.SUPERADMIN]}>
+      <Card className="fixed bottom-4 left-4 z-40">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0 space-y-2">
+          <Button 
+            size="sm" 
+            variant="outline" 
+            className="w-full text-xs"
+            onClick={() => router.push('/dashboard/executive/professionals/create-location')}
+          >
+            Create Location
+          </Button>
+          <Button 
+            size="sm" 
+            variant="outline" 
+            className="w-full text-xs"
+            onClick={() => router.push('/dashboard/executive/system/users')}
+          >
+            Manage Users
+          </Button>
+          <Button 
+            size="sm" 
+            variant="outline" 
+            className="w-full text-xs"
+            onClick={() => router.push('/dashboard/executive/supply-chain/orders')}
+          >
+            Supply Orders
+          </Button>
+        </CardContent>
+      </Card>
+    </PermissionGate>
+  );
+}
+
+export function ProfessionalQuickActions() {
+  const router = useRouter();
+  
+  return (
+    <PermissionGate roles={[KavaPRRole.CERTIFIED_PROFESSIONAL]}>
+      <Card className="fixed bottom-4 left-4 z-40">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0 space-y-2">
+          <Button 
+            size="sm" 
+            variant="outline" 
+            className="w-full text-xs"
+            onClick={() => router.push('/dashboard/professional/locations/create-popup')}
+          >
+            Create Popup
+          </Button>
+          <Button 
+            size="sm" 
+            variant="outline" 
+            className="w-full text-xs"
+            onClick={() => router.push('/dashboard/professional/services/schedule')}
+          >
+            Schedule Service
+          </Button>
+          <Button 
+            size="sm" 
+            variant="outline" 
+            className="w-full text-xs"
+            onClick={() => router.push('/dashboard/professional/locations/create-event')}
+          >
+            Create Event
+          </Button>
+        </CardContent>
+      </Card>
+    </PermissionGate>
+  );
+}
+
+export default KavaPRLayoutWrapper;

@@ -1,8 +1,11 @@
-import { PrismaClient } from '@prisma/client';
+import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
-// Initialize Prisma client
-const prisma = new PrismaClient();
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export const PATCH = async (
   request: Request,
@@ -14,27 +17,33 @@ export const PATCH = async (
 
     // Update the store name if 'storeName' is in the body
     if ('storeName' in body) {
-      const updatedStorename = await prisma.shopData.update({
-        where: {
-          id: String(params.id),
-        },
-        data: {
-          name: body.storeName,
-        },
-      });
+      const { data: updatedStorename, error } = await supabase
+        .from('ShopData')
+        .update({ name: body.storeName })
+        .eq('id', String(params.id))
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
       return NextResponse.json(updatedStorename, { status: 201 });
     }
 
     // Update the store tax if 'tax' is in the body
     if ('tax' in body) {
-      const updatedStoretax = await prisma.shopData.update({
-        where: {
-          id: String(params.id),
-        },
-        data: {
-          tax: body.tax,
-        },
-      });
+      const { data: updatedStoretax, error } = await supabase
+        .from('ShopData')
+        .update({ tax: body.tax })
+        .eq('id', String(params.id))
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
       return NextResponse.json(updatedStoretax, { status: 201 });
     }
 
@@ -46,8 +55,5 @@ export const PATCH = async (
   } catch (error: any) {
     // Handle errors
     return NextResponse.json({ error: error.message }, { status: 500 });
-  } finally {
-    // Disconnect Prisma client
-    await prisma.$disconnect();
   }
 };

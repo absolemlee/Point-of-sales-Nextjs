@@ -9,36 +9,33 @@ export function CardHoverEffectDemo() {
 }
 export const projects = [
   {
-    title: 'Aceternity UI',
-    description: 'Make your websites look 10x modern.',
-    link: 'https://ui.aceternity.com',
+    title: 'Service Exchange System',
+    description: 'Revolutionary project-based service delivery platform enabling associates to offer specialized services with fixed compensation and duration ranges.',
+    link: '/services',
   },
   {
-    title: 'Shadcn/ui',
-    description:
-      'Beautifully designed components that you can copy and paste into your apps. Accessible. Customizable. Open Source.',
-    link: 'https://ui.shadcn.com',
+    title: 'Location Management',
+    description: 'Comprehensive location-centered management system with real-time analytics, inventory tracking, and personnel coordination.',
+    link: '/locations',
   },
   {
-    title: 'Next.js',
-    description: 'The React Framework for the Web.',
+    title: 'Associate Network',
+    description: 'Advanced personnel management with service specializations, certifications, and performance tracking across multiple locations.',
+    link: '/personnel',
+  },
+  {
+    title: 'Next.js Framework',
+    description: 'Built on Next.js 14 with App Router, TypeScript, and modern React patterns for enterprise-grade performance.',
     link: 'https://nextjs.org',
   },
   {
-    title: 'Prisma',
-    description: 'Build data-driven applications — with a great DX.',
+    title: 'Prisma ORM',
+    description: 'Type-safe database operations with PostgreSQL backend, featuring comprehensive service exchange models and relationships.',
     link: 'https://www.prisma.io',
   },
   {
-    title: 'Amazon',
-    description:
-      'A multinational technology company focusing on e-commerce, cloud computing, digital streaming, and artificial intelligence.',
-    link: 'https://amazon.com',
-  },
-  {
-    title: 'Vercel',
-    description:
-      'Vercel is the Frontend Cloud. Build, scale, and secure a faster, personalized web.',
-    link: 'https://vercel.com',
+    title: 'Shadcn/ui Components',
+    description: 'Modern, accessible UI components with dark mode support, responsive design, and consistent design system.',
+    link: 'https://ui.shadcn.com',
   },
 ];

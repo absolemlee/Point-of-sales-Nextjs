@@ -1,35 +1,54 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { createClient } from '@supabase/supabase-js';
 
-// Initialize Prisma client
-const prisma = new PrismaClient();
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 // Handler function for GET request
 export async function GET(req: NextRequest) {
   try {
-    // Aggregate total stock
-    const totalStock = await prisma.productStock.aggregate({
-      _sum: {
-        stock: true,
-      },
-    });
+    // Fetch all product stocks
+    const { data: productStocks, error: stockError } = await supabase
+      .from('ProductStock')
+      .select('stock');
 
-    // Aggregate total amount
-    const totalAmount = await prisma.transaction.aggregate({
-      _sum: {
-        totalAmount: true,
-      },
-    });
+    if (stockError) throw stockError;
 
-    // Aggregate total quantity
-    const totalQuantity = await prisma.onSaleProduct.aggregate({
-      _sum: {
-        quantity: true,
-      },
-    });
+    // Fetch all transactions
+    const { data: transactions, error: transactionError } = await supabase
+      .from('Transaction')
+      .select('totalAmount');
 
-    // Disconnect Prisma client
-    await prisma.$disconnect();
+    if (transactionError) throw transactionError;
+
+    // Fetch all on sale products
+    const { data: onSaleProducts, error: onSaleError } = await supabase
+      .from('OnSaleProduct')
+      .select('quantity');
+
+    if (onSaleError) throw onSaleError;
+
+    // Calculate aggregated data
+    const totalStock = {
+      _sum: {
+        stock: productStocks?.reduce((sum, item) => sum + (item.stock || 0), 0) || 0
+      }
+    };
+
+    const totalAmount = {
+      _sum: {
+        totalAmount: transactions?.reduce((sum, item) => sum + (parseFloat(item.totalAmount || '0')), 0) || 0
+      }
+    };
+
+    const totalQuantity = {
+      _sum: {
+        quantity: onSaleProducts?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
+      }
+    };
 
     // Return aggregated data in the response
     return NextResponse.json(
